@@ -374,6 +374,10 @@ void popup(Request &req, Response &res) {
 }
 void notFound(Request &req, Response &res) {
   Serial.println("WEB notFound");
+  Serial.print("Method: ");
+  Serial.println(req.method());
+  Serial.print("Path: ");
+  Serial.println(req.path());
   res.set("Content-Type", "text/html");
 
   res.println("<html lang='en'>");
@@ -389,6 +393,15 @@ void notFound(Request &req, Response &res) {
   res.println("<h1>Not Found!</h1>");
   res.println("</body>");
   res.println("</html>");
+}
+void handle_chat(Request &req, Response &res) {
+  Serial.println("WEB chat");
+  //Serial.println(req);
+  if (!res.statusSent() && (redirectURL != "")) {
+    res.set("Location", redirectURL);
+    res.sendStatus(302);
+    //sprintf(redirectURL,  "");
+  }
 }
 
 void handle_css(Request &req, Response &res) {
@@ -998,7 +1011,7 @@ void handle_reconnect(Request &req, Response &res) {
   connectToInet();
 
   res.println("<br><h1>Trasmissione Dati</h1><br>");
-  String URLString = (String) "/index.php?" + "api=" + geqo_api + "&" + "mac=" + chipId + "&" + "hb=1";
+  String URLString = (String) "/index.php?" + "api=" + geqo_api + "&" + "mac=" + chipId + "&" + "ver=" +FWversion +"&" + "hb=1";
   res.println("<pre>" + URLString + "</pre>");
 
   esp_task_wdt_reset();  // Reset del watch-dog
@@ -1183,7 +1196,7 @@ void handle_Sensors(Request &req, Response &res) {
 
   res.println("<br><h1>TxOnline:</h1><br>");
     res.println("<br><h1>TxData</h1><br>");
-    String URLString = (String) "/index.php?" + "api=" + geqo_api + "&" + "mac=" + chipId;
+    String URLString = (String) "/index.php?" + "api=" + geqo_api + "&" + "mac=" + chipId + "&" + "ver=" +FWversion ;
     res.println("<pre>" + URLString + "</pre>");
     String result = callURL(geqo_url, URLString, jsonString);
     res.println("<br><h1>Result</h1><br>");
@@ -1658,7 +1671,7 @@ String callURL(const String &Server = "api.geqo.it", const String &url = "/index
       e_client.println((String) "Host: " + host);
       e_client.println((String) "Connection: close");
       e_client.println();
-
+      delay(1000);
       Serial.println("callURL ETH read respond:");
       unsigned long timeout = millis();
       while (e_client.connected() && (millis() - timeout < 10000L)) {
@@ -1689,7 +1702,7 @@ String callURL(const String &Server = "api.geqo.it", const String &url = "/index
       w_client.println((String) "Host: " + host);
       w_client.println((String) "Connection: close");
       w_client.println();
-
+      delay(1000);
       Serial.println("callURL WIFI read respond:");
       unsigned long timeout = millis();
       while (w_client.connected() && (millis() - timeout < 10000L)) {
@@ -1721,7 +1734,7 @@ String callURL(const String &Server = "api.geqo.it", const String &url = "/index
       g_client.println((String) "Host: " + host);
       g_client.println((String) "Connection: close");
       g_client.println();
-
+      delay(1000);
       Serial.println("callURL GPRS read respond:");
       unsigned long timeout = millis();
       while (g_client.connected() && (millis() - timeout < 10000L)) {
@@ -1738,12 +1751,15 @@ String callURL(const String &Server = "api.geqo.it", const String &url = "/index
         Serial.println("callURL GPRS disconnecting from server.");
         g_client.stop();
       }
-    } else {
-      //RESET MODEM
-      Serial.println("callURL GPRS connection failed");
+    } 
+    else {
+      Serial.println("callURL GPRS ERRORE connection failed");
       ModemUsable = false;
       GPRSUsable = false;
+      //RESET MODEM
+      Serial.println("callURL GPRS RESET Modem");
       connectToInet();
+      Serial.println("callURL RELOAD CALL");
       callURL(Server, url, body);
     }
   }
@@ -1757,13 +1773,14 @@ String callURL(const String &Server = "api.geqo.it", const String &url = "/index
       return (response.substring(contentBodyIndex));
     }
   } else {
+    Serial.print('callURL ERROR NO RESPONSE');
     return ("");
   }
 }
 
 void SchedulerRx() {
   Serial.println("Scheduled load tasks (JSON):");
-  String jsonString = callURL(geqo_url, (String) "/index.php?" + "api=" + geqo_api + "&" + "mac=" + chipId );
+  String jsonString = callURL(geqo_url, (String) "/index.php?" + "api=" + geqo_api + "&" + "mac=" + chipId + "&" + "ver=" +FWversion  );
 
   if (!jsonString.isEmpty()) {
     Serial.println("[SchedulerRxHTTP]:");
@@ -1822,14 +1839,14 @@ void SchedulerRx() {
     }
   } 
   else {
-    Serial.println("[SchedulerRxHTTP]: NO RESPONSE");
+    Serial.println("Scheduler HTTP: NO RESPONSE");
   }
 }
 
 void SchedulerTx() {
   String jsonString = scheduler.toJSON();
   if (!jsonString.isEmpty()) {
-    String response = callURL(geqo_url, (String) "/index.php?" + "api=" + geqo_api + "&" + "mac=" + chipId + "&" + "scheduler=" + jsonString);
+    String response = callURL(geqo_url, (String) "/index.php?" + "api=" + geqo_api + "&" + "mac=" + chipId + "&" + "ver=" +FWversion + "&" + "scheduler=" + jsonString);
     Serial.println("[SchedulerTxHTTP]:" + response);
   }
 }
@@ -1842,7 +1859,7 @@ void taskMon() {
   Serial.println(jsonString);
 
   Serial.println("<br><h1>Trasmissione Dati</h1><br>");
-  String URLString = (String) "/index.php?" + "api=" + geqo_api + "&" + "mac=" + chipId;
+  String URLString = (String) "/index.php?" + "api=" + geqo_api + "&" + "mac=" + chipId + "&" + "ver=" +FWversion ;
   Serial.println("<pre>" + URLString + "</pre>");
 
   String result = callURL(geqo_url, URLString, jsonString);
@@ -1854,6 +1871,18 @@ void taskMon() {
 
 /* SCHEDULER FUNCTION ----------------------------------------------------*/
 void WeeklySchedulerFunction(String FuncName, unsigned long duration, unsigned long repeatevery) {
+  
+    byte currentDayOfWeek = rtc.getDayofWeek();
+    byte currentHour = rtc.getHour(true);
+    byte currentMinute = rtc.getMinute();
+    //byte currentSecond = rtc.getSecond();
+    Serial.print('day:');
+    Serial.print(currentDayOfWeek);
+    Serial.print('time:');
+    Serial.print(currentHour);
+    Serial.print(':');
+    Serial.println(currentMinute);
+
   if (FuncName == "EV1" && (AirSpeed >= AirSpeedTrig)) {
     Serial.println("EV1 function");
     O_Pompa = 1;
@@ -1876,7 +1905,7 @@ void WeeklySchedulerFunction(String FuncName, unsigned long duration, unsigned l
   } 
   else {
     // Handle unrecognized function name
-    Serial.println("Error: Unknown function");
+    Serial.println("Error: >" + FuncName + "< Unknown function");
   }
 }
 
@@ -2158,7 +2187,7 @@ void setup() {
   /* TIME SYNC RTC -------------------------------------------------------------------*/
   esp_task_wdt_reset();  // Reset del watch-dog
   Serial.println("TIME SYNC:");
-  String response = callURL(geqo_url, "/index.php?api=" + geqo_api + "&" + "mac=" + chipId + "&" + "hb=1");
+  String response = callURL(geqo_url, "/index.php?api=" + geqo_api + "&" + "mac=" + chipId + "&" + "ver=" +FWversion + "&" + "hb=1");
   if (!response.isEmpty()) {
     Serial.println("TIME HTTP:" + response);
     StaticJsonDocument<256> doc;
@@ -2248,7 +2277,9 @@ void setup() {
   app.use("/reset", &handle_reset);
   app.use("/upload", &handle_upload);
   app.use("/update", &handle_update);
+  app.use("/chat", &handle_chat);
   app.notFound(&notFound);
+  
 
   WifServer.begin();
   EthServer.begin();
