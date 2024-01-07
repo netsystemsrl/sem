@@ -164,7 +164,7 @@ int EV1_TON = 3000;
 int EV2_TON = 3000;
 int PMP_TON = 3000;
 int EVDutyCicle = 20;    // EVDutyCicle in %
-int FanDutyCicle = 100;  // EVDutyCicle in %
+int FanDutyCicle = 100;  // FanDutyCicle in %
 int PumpDutyCicle = 0;   // Duty-cycle per il PWM di sovralimentazione della pompa. [0 = 11.5V 10 = 12.5 V  20 = 13.6 V  30 = 15V su carico da 15ohm]
 int PumpCurrent = 0;
 
@@ -641,6 +641,14 @@ void handle_SrvConfig(Request &req, Response &res) {
     PumpDutyCicle = settings.getInt("PumpDutyCicle", 0);
   }
 
+  setStringToArray(name, "FanDutyCicle");
+  if (req.form(name, 64, value, 64)) {
+    Serial.print("FanDutyCicle");
+    Serial.println(value);
+    settings.putInt("FanDutyCicle", atoi(value));
+    FanDutyCicle = settings.getInt("FanDutyCicle", 100);
+  }
+
   setStringToArray(name, "AirSpeedTrig");
   if (req.form(name, 64, value, 64)) {
     Serial.print("AirSpeedTrig");
@@ -734,6 +742,12 @@ void handle_SrvConfig(Request &req, Response &res) {
       if (PumpDutyCicle == 30 ) res.print("<option value='30' selected>15.0V</option>"); else res.print("<option value='30'>15.0V</option>");
     res.println("</select></td>");
   res.println("</tr>");
+
+  res.println("<tr>");
+    res.println("<td>FanPower</td>");
+    res.println((String)"<td><input name='FanDutyCicle' length=32 value='" + FanDutyCicle + "'></td>");
+  res.println("</tr>");
+
 
   res.println("<tr>");
     res.println("<td>AirSpeedMin</td>");
@@ -1058,6 +1072,9 @@ void handle_reconnect(Request &req, Response &res) {
       PumpDutyCicle = doc["PP"].as<int>();
       settings.putInt("PumpDutyCicle", PumpDutyCicle);
 
+      FanDutyCicle = doc["FP"].as<int>();
+      settings.putInt("FanDutyCicle", FanDutyCicle);
+
       AirSpeedTrig = doc["AS"];
       settings.putFloat("AirSpeedTrig", AirSpeedTrig);
 
@@ -1172,6 +1189,7 @@ void handle_Sensors(Request &req, Response &res) {
     res.println("<tr><th>Var</th><th>Value</th><th>Definition</th></tr>");
     res.println((String) "<tr><td>Pump</td><td>" + O_Pompa + "<td>OutPump</td></td></tr>");
     res.println((String) "<tr><td>PumpPower</td><td>" + PumpDutyCicle + "</td><td>0 = 11.5V 10 = 12.5 V  20 = 13.6 V  30 = 15V</td></tr>");
+    res.println((String) "<tr><td>FanDutyCicle</td><td>" + FanDutyCicle + "</td><td>0-100%</td></tr>");
     res.println((String) "<tr><td>AirSpeedTrig</td><td>" + AirSpeedTrig + "</td><td>0 = NoUse, x=Check min </td></tr>");
     res.println((String) "<tr><td>EV1</td><td>" + EV1_ON + "</td><td>Out1</td></tr>");
     res.println((String) "<tr><td>EV2</td><td>" + EV2_ON + "</td><td>Out2</td></tr>");
@@ -1821,6 +1839,9 @@ void SchedulerRx() {
     PumpDutyCicle = doc["PP"].as<int>();
     settings.putInt("PumpDutyCicle", PumpDutyCicle);
 
+    FanDutyCicle = doc["FP"].as<int>();
+    settings.putInt("FanDutyCicle", FanDutyCicle);
+
     AirSpeedTrig = doc["AS"];
     settings.putFloat("AirSpeedTrig", AirSpeedTrig);
 
@@ -2139,6 +2160,7 @@ void setup() {
     settings.putString("geqo_zone", geqo_zone);
     settings.putString("iotname", iotName);
     settings.putInt("PumpDutyCicle", PumpDutyCicle);
+    settings.putInt("FanDutyCicle", FanDutyCicle);
     settings.putFloat("AirSpeedTrig", AirSpeedTrig);
   }
   geqo_url = settings.getString("geqo_url", "");
@@ -2151,6 +2173,7 @@ void setup() {
   geqo_zone = settings.getString("geqo_zone", "");
   iotName = settings.getString("iotname", "");
   PumpDutyCicle = settings.getInt("PumpDutyCicle", 0);
+  FanDutyCicle = settings.getInt("FanDutyCicle", 100);
   AirSpeedTrig = settings.getFloat("AirSpeedTrig", 0.0);
   settings.end();
 
@@ -2221,6 +2244,9 @@ void setup() {
 
       PumpDutyCicle = doc["PP"].as<int>();
       settings.putInt("PumpDutyCicle", PumpDutyCicle);
+
+      FanDutyCicle = doc["FP"].as<int>();
+      settings.putInt("FanDutyCicle", FanDutyCicle);
 
       AirSpeedTrig = doc["AS"];
       settings.putFloat("AirSpeedTrig", AirSpeedTrig);
